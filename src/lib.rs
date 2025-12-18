@@ -12,10 +12,13 @@
 #[cfg(test)]
 mod tests;
 
-use core::mem;
+use core::ffi::CStr;
+use core::mem::{self, MaybeUninit};
 use core::ptr;
+use core::slice;
+use core::str;
 
-pub const BUFFER_SIZE: usize = 25;
+const BUFFER_SIZE: usize = 25;
 
 #[allow(non_camel_case_types)]
 struct uint128 {
@@ -813,7 +816,7 @@ unsafe fn write(mut buffer: *mut u8, dec_sig: u64, mut dec_exp: i32) {
 
 /// Writes the shortest correctly rounded decimal representation of `value` to
 /// `buffer`. `buffer` should point to a buffer of size `buffer_size` or larger.
-pub unsafe fn dtoa(value: f64, mut buffer: *mut u8) {
+unsafe fn dtoa(value: f64, mut buffer: *mut u8) {
     const NUM_BITS: u32 = mem::size_of::<f64>() as u32 * 8;
     let bits = value.to_bits();
 
@@ -971,5 +974,25 @@ pub unsafe fn dtoa(value: f64, mut buffer: *mut u8) {
             },
             dec_exp,
         );
+    }
+}
+
+pub struct Buffer {
+    bytes: [MaybeUninit<u8>; BUFFER_SIZE],
+}
+
+impl Buffer {
+    pub fn new() -> Self {
+        let bytes = [MaybeUninit::<u8>::uninit(); BUFFER_SIZE];
+        Buffer { bytes }
+    }
+
+    pub fn format(&mut self, f: f64) -> &str {
+        unsafe {
+            dtoa(f, self.bytes.as_mut_ptr().cast::<u8>());
+            let len = CStr::from_ptr(self.bytes.as_ptr().cast::<i8>()).count_bytes();
+            let slice = slice::from_raw_parts(self.bytes.as_ptr().cast::<u8>(), len);
+            str::from_utf8_unchecked(slice)
+        }
     }
 }

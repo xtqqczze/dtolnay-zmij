@@ -1,15 +1,5 @@
-use core::ffi::CStr;
-use core::mem::MaybeUninit;
-
 fn dtoa(value: f64) -> String {
-    let mut buffer = MaybeUninit::<[u8; zmij::BUFFER_SIZE]>::uninit();
-    unsafe {
-        zmij::dtoa(value, buffer.as_mut_ptr().cast::<u8>());
-        CStr::from_ptr(buffer.as_ptr().cast::<i8>())
-            .to_str()
-            .unwrap()
-            .to_owned()
-    }
+    zmij::Buffer::new().format(value).to_owned()
 }
 
 #[test]

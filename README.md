@@ -18,15 +18,9 @@ implementation in C++, [https://github.com/vitaut/zmij][upstream].
 ## Example
 
 ```rust
-use core::ffi::CStr;
-use core::mem::MaybeUninit;
-
 fn main() {
-    let mut buffer = MaybeUninit::<[u8; zmij::BUFFER_SIZE]>::uninit();
-    let printed = unsafe {
-        zmij::dtoa(1.234, buffer.as_mut_ptr().cast::<u8>());
-        CStr::from_ptr(buffer.as_ptr().cast::<i8>()).to_str().unwrap()
-    };
+    let mut buffer = zmij::Buffer::new();
+    let printed = buffer.format(1.234);
     assert_eq!(printed, "1.234e+00");
 }
 ```
