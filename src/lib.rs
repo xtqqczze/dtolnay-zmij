@@ -665,7 +665,7 @@ fn umul128(x: u64, y: u64) -> u128 {
 
 fn umul192_upper128(x_hi: u64, x_lo: u64, y: u64) -> uint128 {
     let p = umul128(x_hi, y);
-    let lo = p as u64 + (umul128(x_lo, y) >> 64) as u64;
+    let lo = (p as u64).wrapping_add((umul128(x_lo, y) >> 64) as u64);
     uint128 {
         hi: (p >> 64) as u64 + u64::from(lo < p as u64),
         lo,
@@ -952,7 +952,9 @@ unsafe fn dtoa(value: f64, mut buffer: *mut u8) -> *mut u8 {
 
     // Pick the closest of dec_sig_under and dec_sig_over and check if it's in
     // the rounding interval.
-    let cmp = (scaled_sig - ((dec_sig_under + dec_sig_over) << 1)).cast_signed();
+    let cmp = scaled_sig
+        .wrapping_sub((dec_sig_under + dec_sig_over) << 1)
+        .cast_signed();
     let under_closer = cmp < 0 || (cmp == 0 && (dec_sig_under & 1) == 0);
     let under_in = (dec_sig_under << 2) >= lower;
     unsafe {
