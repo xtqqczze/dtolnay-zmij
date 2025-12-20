@@ -8,7 +8,11 @@
 
 #![no_std]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![allow(clippy::items_after_statements, clippy::unreadable_literal)]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::items_after_statements,
+    clippy::unreadable_literal
+)]
 
 #[cfg(test)]
 mod tests;
