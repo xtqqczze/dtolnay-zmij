@@ -27,6 +27,12 @@ fn inf() {
 }
 
 #[test]
+fn nan() {
+    assert_eq!(dtoa(f64::NAN.copysign(1.0)), "NaN");
+    assert_eq!(dtoa(f64::NAN.copysign(-1.0)), "NaN");
+}
+
+#[test]
 fn shorter() {
     // A possibly shorter underestimate is picked (u' in Schubfach).
     assert_eq!(dtoa(-4.932096661796888e-226), "-4.932096661796888e-226");
