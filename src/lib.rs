@@ -906,7 +906,7 @@ unsafe fn dtoa(value: f64, mut buffer: *mut u8) -> *mut u8 {
         let rem10 = (digit << NUM_FRACTIONAL_BITS) | (fractional >> NUM_INTEGRAL_BITS);
         // dec_exp is chosen such that 10**dec_exp <= 2**bin_exp < 10**(dec_exp + 1)
         // Since 1ulp = 2**bin_exp it will be in the range [1, 10) after scaling
-        // by 10**dec_exp.
+        // by 10**dec_exp. Add 1 to combine the shift with division by two.
         let half_ulp = pow10_hi >> (NUM_INTEGRAL_BITS - exp_shift + 1);
         let upper = rem10 + half_ulp;
 
