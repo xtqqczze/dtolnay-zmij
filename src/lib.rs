@@ -984,17 +984,19 @@ unsafe fn dtoa(value: f64, mut buffer: *mut u8) -> *mut u8 {
         *buffer = b'e';
         buffer = buffer.add(1);
     }
-    unsafe {
-        *buffer = b'+' + u8::from(dec_exp < 0) * (b'-' - b'+');
-        buffer = buffer.add(1);
-    }
+    let sign_ptr = buffer;
+    let sign = b'+' + u8::from(dec_exp < 0) * (b'-' - b'+');
     let mask = dec_exp >> 31;
     dec_exp = (dec_exp + mask) ^ mask; // absolute value
+    unsafe {
+        buffer = buffer.add(usize::from(dec_exp >= 10));
+    }
     let (a, bb) = divmod100(dec_exp.cast_unsigned());
     unsafe {
         *buffer = b'0' + a as u8;
         buffer = buffer.add(usize::from(dec_exp >= 100));
         buffer.cast::<u16>().write_unaligned(*digits2(bb as usize));
+        *sign_ptr = sign;
         buffer.add(2)
     }
 }

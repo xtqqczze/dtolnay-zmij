@@ -11,7 +11,7 @@ fn normal() {
 
 #[test]
 fn small_int() {
-    assert_eq!(dtoa(1.0), "1e+00");
+    assert_eq!(dtoa(1.0), "1e+0");
 }
 
 #[test]
