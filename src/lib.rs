@@ -910,7 +910,7 @@ unsafe fn dtoa(value: f64, mut buffer: *mut u8) -> *mut u8 {
         let half_ulp = pow10_hi >> (NUM_INTEGRAL_BITS - exp_shift + 1);
         let upper = rem10 + half_ulp;
 
-        // An optimization from yy_double by Yaoyuan Guo:
+        // An optimization from yy by Yaoyuan Guo:
         if fractional != (1 << 63) && rem10 != half_ulp && TEN.wrapping_sub(upper) > 1 {
             let round = (upper >> NUM_FRACTIONAL_BITS) >= 10;
             let shorter = integral - digit + u64::from(round) * 10;
