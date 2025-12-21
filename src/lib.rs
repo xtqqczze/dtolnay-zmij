@@ -20,6 +20,7 @@
 #![allow(
     clippy::blocks_in_conditions,
     clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
     clippy::cast_sign_loss,
     clippy::items_after_statements,
     clippy::must_use_candidate,
