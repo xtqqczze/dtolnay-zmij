@@ -1,4 +1,4 @@
-#![allow(clippy::unreadable_literal)]
+#![allow(clippy::float_cmp, clippy::unreadable_literal)]
 
 fn dtoa(value: f64) -> String {
     zmij::Buffer::new().format(value).to_owned()
