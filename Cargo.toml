@@ -8,9 +8,13 @@ documentation = "https://docs.rs/zmij"
 edition = "2024"
 license = "MIT"
 
+[dev-dependencies]
+opt-level = "1"
+rand = "0.9"
+ryu = "1"
+
 [target.'cfg(not(miri))'.dev-dependencies]
 criterion = { version = "0.8", default-features = false }
-ryu = "1"
 
 [[bench]]
 name = "bench"
