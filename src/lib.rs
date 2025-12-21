@@ -901,7 +901,7 @@ unsafe fn dtoa(value: f64, mut buffer: *mut u8) -> *mut u8 {
         // Switch to a fixed-point representation with the integral part in the
         // upper 4 bits and the rest being the fractional part.
         const NUM_INTEGRAL_BITS: i32 = 4;
-        const NUM_FRACTIONAL_BITS: i32 = NUM_BITS as i32 - NUM_INTEGRAL_BITS;
+        const NUM_FRACTIONAL_BITS: i32 = NUM_BITS.cast_signed() - NUM_INTEGRAL_BITS;
         const TEN: u64 = 10 << NUM_FRACTIONAL_BITS;
         // Fixed-point remainder of the scaled significand modulo 10.
         let rem10 = (digit << NUM_FRACTIONAL_BITS) | (fractional >> NUM_INTEGRAL_BITS);
