@@ -5,12 +5,12 @@ fn utilities() {
     assert_eq!(countl_zero(1), 63);
     assert_eq!(countl_zero(!0), 0);
 
-    assert_eq!(crate::count_trailing_nonzeros(0x30303030_30303030), 0);
-    assert_eq!(crate::count_trailing_nonzeros(0x30303030_30303031), 1);
-    assert_eq!(crate::count_trailing_nonzeros(0x30303030_30303039), 1);
-    assert_eq!(crate::count_trailing_nonzeros(0x30393030_39303030), 7);
-    assert_eq!(crate::count_trailing_nonzeros(0x31303030_30303030), 8);
-    assert_eq!(crate::count_trailing_nonzeros(0x39303030_30303030), 8);
+    assert_eq!(crate::count_trailing_nonzeros(0x00000000_00000000), 0);
+    assert_eq!(crate::count_trailing_nonzeros(0x00000000_00000001), 1);
+    assert_eq!(crate::count_trailing_nonzeros(0x00000000_00000009), 1);
+    assert_eq!(crate::count_trailing_nonzeros(0x00090000_09000000), 7);
+    assert_eq!(crate::count_trailing_nonzeros(0x01000000_00000000), 8);
+    assert_eq!(crate::count_trailing_nonzeros(0x09000000_00000000), 8);
 }
 
 #[test]

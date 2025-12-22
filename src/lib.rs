@@ -733,20 +733,19 @@ fn count_trailing_nonzeros(x: u64) -> usize {
     #[cfg(target_endian = "big")]
     compile_error!();
 
-    // We count the number of characters until there are only '0' == 0x30
-    // characters left.
+    // We count the number of bytes until there are only '\0's left.
     // The code is equivalent to
-    //    8 - (x & !0x30303030_30303030).leading_zeros() / 8
-    // but if the BSR instruction is emitted, subtracting the constant before
-    // dividing allows combining it with the subtraction from BSR counting in
-    // the opposite direction.
-    //    (71 - (x & !0x30303030_30303030).leading_zeros()) as usize / 8
-    // Additionally, the bsr instruction requires a zero check. Since the high
+    //    8 - x.leading_zeros() / 8
+    // but if the BSR instruction is emitted (as gcc on x64 does with default
+    // settings), subtracting the constant before dividing allows the compiler
+    // to combine it with the subtraction which it inserts due to BSR counting
+    // in the opposite direction.
+    //
+    // Additionally, the BSR instruction requires a zero check. Since the high
     // bit is never set we can avoid the zero check by shifting the datum left
-    // by one and using XOR to both remove the 0x30s and insert a sentinel bit
-    // at the end.
-    const MASK_WITH_SENTINEL: u64 = (0x30303030_30303030 << 1) | 1;
-    (70 - ((x << 1) ^ MASK_WITH_SENTINEL).leading_zeros()) as usize / 8
+    // by one and inserting a sentinel bit at the end. On my x64 this is a
+    // measurable speed-up over the automatically inserted range check.
+    (70 - ((x << 1) | 1).leading_zeros()) as usize / 8
 }
 
 // Converts value in the range [0, 100) to a string. GCC generates a bit better
@@ -775,18 +774,18 @@ unsafe fn digits2(value: usize) -> &'static u16 {
 }
 
 #[cfg_attr(feature = "no-panic", no_panic)]
-unsafe fn digits2_u64(value: u32) -> u64 {
-    let digits = unsafe { digits2(value as usize) };
-    u64::from(*digits)
-}
-
-// Converts the value `aa * 10**6 + bb * 10**4 + cc * 10**2 + dd` to a string
-// returned as a 64-bit integer.
-#[cfg_attr(feature = "no-panic", no_panic)]
-unsafe fn digits8_u64(aa: u32, bb: u32, cc: u32, dd: u32) -> u64 {
-    unsafe {
-        digits2_u64(dd) << 48 | digits2_u64(cc) << 32 | digits2_u64(bb) << 16 | digits2_u64(aa)
-    }
+fn to_bcd8(abcdefgh: u64) -> u64 {
+    // Three steps BCD. Base 10000 -> base 100 -> base 10.
+    // div and mod are evaluated simultaneously as, e.g.
+    //   (abcdefgh / 10000) << 32 + (abcdefgh % 10000)
+    //      == abcdefgh + (2^32 - 10000) * (abcdefgh / 10000)))
+    // where the division on the RHS is implemented by the usual multiply + shift
+    // trick and the fractional bits are masked away.
+    let abcd_efgh = abcdefgh + (0x100000000 - 10000) * ((abcdefgh * 0x68db8bb) >> 40);
+    let ab_cd_ef_gh = abcd_efgh + (0x10000 - 100) * (((abcd_efgh * 0x147b) >> 19) & 0x7f0000007f);
+    let a_b_c_d_e_f_g_h =
+        ab_cd_ef_gh + (0x100 - 10) * (((ab_cd_ef_gh * 0x67) >> 10) & 0xf000f000f000f);
+    a_b_c_d_e_f_g_h.to_be()
 }
 
 // Writes a significand consisting of 16 or 17 decimal digits and removes
@@ -797,38 +796,31 @@ unsafe fn write_significand(mut buffer: *mut u8, value: u64) -> *mut u8 {
     // digit a can be zero.
     let abbccddee = (value / 100_000_000) as u32;
     let ffgghhii = (value % 100_000_000) as u32;
-    let abbcc = abbccddee / 10_000;
-    let ddee = abbccddee % 10_000;
-    let abb = abbcc / 100;
-    let cc = abbcc % 100;
-    let (a, bb) = divmod100(abb);
-    let (dd, ee) = divmod100(ddee);
+    let a = abbccddee / 100_000_000;
+    let bbccddee = abbccddee % 100_000_000;
 
     unsafe {
         *buffer = b'0' + a as u8;
         buffer = buffer.add(usize::from(a != 0));
     }
 
-    // Use an intermediate u64 to make sure that the compiler constructs the
-    // value in a register. This way the buffer is written to memory in one go
-    // and count_trailing_nonzeros doesn't have to load from memory.
-    let digits = unsafe { digits8_u64(bb, cc, dd, ee) };
+    // 0x30 == '0'
+    const ZEROBITS: u64 = 0x30303030_30303030;
+
+    let bcd = to_bcd8(u64::from(bbccddee));
+    let bits = bcd | ZEROBITS;
     unsafe {
-        buffer.cast::<u64>().write_unaligned(digits);
+        buffer.cast::<u64>().write_unaligned(bits);
     }
     if ffgghhii == 0 {
-        return unsafe { buffer.add(count_trailing_nonzeros(digits)) };
+        return unsafe { buffer.add(count_trailing_nonzeros(bcd)) };
     }
-
     buffer = unsafe { buffer.add(8) };
-    let ffgg = ffgghhii / 10_000;
-    let hhii = ffgghhii % 10_000;
-    let (ff, gg) = divmod100(ffgg);
-    let (hh, ii) = divmod100(hhii);
+    let bcd = to_bcd8(u64::from(ffgghhii));
+    let bits = bcd | ZEROBITS;
     unsafe {
-        let digits = digits8_u64(ff, gg, hh, ii);
-        buffer.cast::<u64>().write_unaligned(digits);
-        buffer.add(count_trailing_nonzeros(digits))
+        buffer.cast::<u64>().write_unaligned(bits);
+        buffer.add(count_trailing_nonzeros(bcd))
     }
 }
 
