@@ -1,9 +1,9 @@
 #[test]
 fn utilities() {
-    let count_lzero = u64::leading_zeros;
-    assert_eq!(count_lzero(0), 64);
-    assert_eq!(count_lzero(1), 63);
-    assert_eq!(count_lzero(!0), 0);
+    let countl_zero = u64::leading_zeros;
+    assert_eq!(countl_zero(0), 64);
+    assert_eq!(countl_zero(1), 63);
+    assert_eq!(countl_zero(!0), 0);
 
     assert_eq!(crate::count_trailing_nonzeros(0x30303030_30303030), 0);
     assert_eq!(crate::count_trailing_nonzeros(0x30303030_30303031), 1);

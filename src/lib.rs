@@ -982,6 +982,7 @@ unsafe fn dtoa(value: f64, mut buffer: *mut u8) -> *mut u8 {
     const EXP_BIAS: i32 = (1 << (NUM_EXP_BITS - 1)) - 1;
     let mut bin_exp = (bits >> NUM_SIG_BITS) as i32 & EXP_MASK; // binary exponent
 
+    let mut subnormal = false;
     if bin_exp == 0 {
         if bin_sig == 0 {
             return unsafe {
@@ -995,6 +996,7 @@ unsafe fn dtoa(value: f64, mut buffer: *mut u8) -> *mut u8 {
         bin_sig |= IMPLICIT_BIT;
         bin_exp = 1;
         regular = true;
+        subnormal = true;
     }
     bin_sig ^= IMPLICIT_BIT;
     bin_exp -= NUM_SIG_BITS + EXP_BIAS;
@@ -1003,9 +1005,22 @@ unsafe fn dtoa(value: f64, mut buffer: *mut u8) -> *mut u8 {
         sig: dec_sig,
         exp: mut dec_exp,
     } = to_decimal(bin_sig, bin_exp, regular);
-    dec_exp += 15 + i32::from(dec_sig >= 10_000_000_000_000_000);
+    let num_digits = 15 + usize::from(dec_sig >= 10_000_000_000_000_000);
+    dec_exp += num_digits as i32;
 
-    let end = unsafe { write_significand(buffer.add(1), dec_sig) };
+    let mut end = unsafe { write_significand(buffer.add(1), dec_sig) };
+    if subnormal {
+        unsafe {
+            let mut p = buffer.add(1);
+            while *p == b'0' {
+                p = p.add(1);
+            }
+            let num_zeros = p.offset_from(buffer.add(1)) as usize;
+            ptr::copy(p, buffer.add(1), num_digits - num_zeros);
+            dec_exp -= num_zeros as i32;
+            end = end.sub(num_zeros);
+        }
+    }
     let length = unsafe { end.offset_from(buffer.add(1)) } as usize;
 
     if (-5..=15).contains(&dec_exp) {
