@@ -958,19 +958,19 @@ where
 
     let scaled_sig =
         umul192_upper64_inexact_to_odd(pow10_hi, pow10_lo, bin_sig_shifted << exp_shift);
-    let dec_sig_under = scaled_sig >> BOUND_SHIFT;
-    let dec_sig_over = dec_sig_under + 1;
+    let dec_sig_below = scaled_sig >> BOUND_SHIFT;
+    let dec_sig_above = dec_sig_below + 1;
 
-    // Pick the closest of dec_sig_under and dec_sig_over and check if it's in
+    // Pick the closest of dec_sig_below and dec_sig_above and check if it's in
     // the rounding interval.
-    let cmp = scaled_sig.wrapping_sub((dec_sig_under + dec_sig_over) << 1) as i64;
-    let under_closer = cmp < 0 || (cmp == 0 && (dec_sig_under & 1) == 0);
-    let under_in = (dec_sig_under << BOUND_SHIFT) >= lower;
+    let cmp = scaled_sig.wrapping_sub((dec_sig_below + dec_sig_above) << 1) as i64;
+    let under_closer = cmp < 0 || (cmp == 0 && (dec_sig_below & 1) == 0);
+    let under_in = (dec_sig_below << BOUND_SHIFT) >= lower;
     fp {
         sig: if under_closer & under_in {
-            dec_sig_under
+            dec_sig_below
         } else {
-            dec_sig_over
+            dec_sig_above
         },
         exp: dec_exp,
     }
@@ -1024,26 +1024,26 @@ where
         sig: dec_sig,
         exp: mut dec_exp,
     } = to_decimal(bin_sig, bin_exp, regular);
-    let mut end;
-    if num_bits == 64 {
-        let num_digits = 15 + usize::from(dec_sig >= 10_000_000_000_000_000);
-        dec_exp += num_digits as i32;
-        end = unsafe { write_significand17(buffer.add(1), dec_sig) };
-        if subnormal {
-            unsafe {
-                let mut p = buffer.add(1);
-                while *p == b'0' {
-                    p = p.add(1);
-                }
-                let num_zeros = p.offset_from(buffer.add(1)) as usize;
-                ptr::copy(p, buffer.add(1), num_digits - num_zeros + 1);
-                dec_exp -= num_zeros as i32;
-                end = end.sub(num_zeros);
-            }
-        }
+    let mut num_digits = Float::MAX_DIGITS10 - 2;
+    let mut end = if num_bits == 64 {
+        num_digits += u32::from(dec_sig >= 10_000_000_000_000_000);
+        unsafe { write_significand17(buffer.add(1), dec_sig) }
     } else {
-        dec_exp += 7 + i32::from(dec_sig >= 100_000_000);
-        end = unsafe { write_significand9(buffer.add(1), dec_sig as u32) };
+        num_digits += u32::from(dec_sig >= 100_000_000);
+        unsafe { write_significand9(buffer.add(1), dec_sig as u32) }
+    };
+    dec_exp += num_digits as i32;
+    if subnormal {
+        unsafe {
+            let mut p = buffer.add(1);
+            while *p == b'0' {
+                p = p.add(1);
+            }
+            let num_zeros = p.offset_from(buffer.add(1)) as usize;
+            ptr::copy(p, buffer.add(1), num_digits as usize - num_zeros + 1);
+            dec_exp -= num_zeros as i32;
+            end = end.sub(num_zeros);
+        }
     }
 
     let length = unsafe { end.offset_from(buffer.add(1)) } as usize;

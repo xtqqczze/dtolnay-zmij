@@ -88,6 +88,6 @@ mod ftoa_test {
 
     #[test]
     fn subnormal() {
-        assert_eq!(ftoa(0.0f32.next_up()), "0.0000001e-38");
+        assert_eq!(ftoa(0.0f32.next_up()), "1e-45");
     }
 }
