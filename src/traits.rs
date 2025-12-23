@@ -1,7 +1,7 @@
 use core::fmt::Display;
 use core::ops::{Add, BitAnd, BitOr, BitOrAssign, BitXorAssign, Div, Mul, Shl, Shr, Sub};
 
-pub(crate) trait Float: Copy {
+pub trait Float: Copy {
     type UInt: UInt;
     const MANTISSA_DIGITS: u32;
     fn to_bits(self) -> Self::UInt;
@@ -23,7 +23,7 @@ impl Float for f64 {
     }
 }
 
-pub(crate) trait UInt:
+pub trait UInt:
     Copy
     + From<u8>
     + From<bool>
