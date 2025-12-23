@@ -37,3 +37,7 @@ rustdoc-args = [
     "--generate-macro-expansion",
     "--extern-html-root-url=core=https://doc.rust-lang.org",
 ]
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(__f32)']

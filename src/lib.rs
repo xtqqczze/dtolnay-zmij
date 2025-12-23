@@ -1154,7 +1154,10 @@ impl Buffer {
 #[allow(unknown_lints)] // rustc older than 1.74
 #[allow(private_bounds)]
 pub trait Float: private::Sealed {}
+
+#[cfg(__f32)]
 impl Float for f32 {}
+
 impl Float for f64 {}
 
 mod private {
@@ -1163,6 +1166,7 @@ mod private {
         fn format_nonfinite(self) -> &'static str;
     }
 
+    #[cfg(__f32)]
     impl Sealed for f32 {
         #[inline]
         fn is_nonfinite(self) -> bool {

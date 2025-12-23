@@ -4,6 +4,7 @@ fn dtoa(value: f64) -> String {
     zmij::Buffer::new().format(value).to_owned()
 }
 
+#[cfg(__f32)]
 fn ftoa(value: f32) -> String {
     zmij::Buffer::new().format(value).to_owned()
 }
@@ -75,6 +76,7 @@ mod dtoa_test {
     }
 }
 
+#[cfg(__f32)]
 mod ftoa_test {
     use super::ftoa;
 
