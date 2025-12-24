@@ -714,9 +714,18 @@ fn umul192_upper128(x_hi: u64, x_lo: u64, y: u64) -> uint128 {
 // Computes upper 64 bits of multiplication of x and y, discards the least
 // significant bit and rounds to odd, where x = uint128_t(x_hi << 64) | x_lo.
 #[cfg_attr(feature = "no-panic", no_panic)]
-fn umul192_upper64_inexact_to_odd(x_hi: u64, x_lo: u64, y: u64) -> u64 {
-    let uint128 { hi, lo } = umul192_upper128(x_hi, x_lo, y);
-    hi | u64::from((lo >> 1) != 0)
+fn umul_upper_inexact_to_odd<UInt>(x_hi: u64, x_lo: u64, y: UInt) -> UInt
+where
+    UInt: traits::UInt,
+{
+    let num_bits = mem::size_of::<UInt>() * 8;
+    if num_bits == 64 {
+        let uint128 { hi, lo } = umul192_upper128(x_hi, x_lo, y.into());
+        UInt::truncate(hi | u64::from((lo >> 1) != 0))
+    } else {
+        let result = (umul128(x_hi, y.into()) >> 32) as u64;
+        UInt::enlarge((result >> 32) as u32 | u32::from((result as u32 >> 1) != 0))
+    }
 }
 
 // Returns {value / 100, value % 100} correct for values of up to 4 digits.
@@ -864,7 +873,7 @@ where
     let dec_exp = (bin_exp * LOG10_2_SIG + i32::from(!regular) * LOG10_3_OVER_4_SIG) >> LOG10_2_EXP;
 
     const DEC_EXP_MIN: i32 = -292;
-    let (pow10_hi, mut pow10_lo) =
+    let (mut pow10_hi, mut pow10_lo) =
         *unsafe { POW10_SIGNIFICANDS.get_unchecked((-dec_exp - DEC_EXP_MIN) as usize) };
 
     // log2_pow10_sig = round(log2(10) * 2**log2_pow10_exp) + 1
@@ -883,20 +892,20 @@ where
     //   3 * 2**60 / 100 = 3.45...e+16 (exp_shift = 2 + 1)
     let exp_shift = bin_exp + pow10_bin_exp + 1;
 
+    let num_bits = mem::size_of::<UInt>() as i32 * 8;
     if regular {
-        let num_bits = mem::size_of::<UInt>() as i32 * 8;
         let integral;
         let fractional;
         if num_bits == 64 {
             let result = umul192_upper128(pow10_hi, pow10_lo, (bin_sig << exp_shift).into());
-            integral = result.hi;
+            integral = UInt::truncate(result.hi);
             fractional = result.lo;
         } else {
             let result = umul128(pow10_hi, (bin_sig << exp_shift).into());
-            integral = (result >> 64) as u64;
-            fractional = result as u64 & !0xffffffff;
+            integral = UInt::truncate((result >> 64) as u64);
+            fractional = result as u64;
         }
-        let digit = integral % 10;
+        let digit = integral.into() % 10;
 
         // Switch to a fixed-point representation with the least significant
         // integral digit in the upper bits and fractional digits in the lower
@@ -922,8 +931,8 @@ where
             ten.wrapping_sub(upper) > 1
         } {
             let round = (upper >> num_fractional_bits) >= 10;
-            let shorter = integral - digit + u64::from(round) * 10;
-            let longer = integral + u64::from(fractional >= (1 << 63));
+            let shorter = integral.into() - digit + u64::from(round) * 10;
+            let longer = integral.into() + u64::from(fractional >= (1 << 63));
             return fp {
                 sig: if rem10 <= half_ulp10 || round {
                     shorter
@@ -936,33 +945,37 @@ where
     }
 
     // Fallback to Schubfach to guarantee correctness in boundary cases and
-    // switch to overestimates.
-    pow10_lo += 1;
+    // switch to strict overestimates of powers of 10.
+    if num_bits == 64 {
+        pow10_lo += 1;
+    } else {
+        pow10_hi += 1;
+    }
 
     // Shift the significand so that boundaries are integer.
     const BOUND_SHIFT: u32 = 2;
-    let bin_sig_shifted: u64 = (bin_sig << BOUND_SHIFT).into();
+    let bin_sig_shifted = bin_sig << BOUND_SHIFT;
 
     // Compute the estimates of lower and upper bounds of the rounding interval
     // by multiplying them by the power of 10 and applying modified rounding.
-    let lsb = bin_sig.into() & 1;
-    let lower = (bin_sig_shifted - (u64::from(regular) + 1)) << exp_shift;
-    let lower = umul192_upper64_inexact_to_odd(pow10_hi, pow10_lo, lower) + lsb;
-    let upper = (bin_sig_shifted + 2) << exp_shift;
-    let upper = umul192_upper64_inexact_to_odd(pow10_hi, pow10_lo, upper) - lsb;
+    let lsb = bin_sig & UInt::from(1);
+    let lower = (bin_sig_shifted - (UInt::from(regular) + UInt::from(1))) << exp_shift;
+    let lower = umul_upper_inexact_to_odd(pow10_hi, pow10_lo, lower) + lsb;
+    let upper = (bin_sig_shifted + UInt::from(2)) << exp_shift;
+    let upper = umul_upper_inexact_to_odd(pow10_hi, pow10_lo, upper) - lsb;
 
     // The idea of using a single shorter candidate is by Cassio Neri.
     // It is less or equal to the upper bound by construction.
-    let shorter = 10 * ((upper >> BOUND_SHIFT) / 10);
+    let shorter = UInt::from(10) * ((upper >> BOUND_SHIFT) / UInt::from(10));
     if (shorter << BOUND_SHIFT) >= lower {
         return fp {
-            sig: shorter,
+            sig: shorter.into(),
             exp: dec_exp,
         };
     }
 
-    let scaled_sig =
-        umul192_upper64_inexact_to_odd(pow10_hi, pow10_lo, bin_sig_shifted << exp_shift);
+    let scaled_sig: u64 =
+        umul_upper_inexact_to_odd(pow10_hi, pow10_lo, bin_sig_shifted << exp_shift).into();
     let dec_sig_below = scaled_sig >> BOUND_SHIFT;
     let dec_sig_above = dec_sig_below + 1;
 
@@ -970,7 +983,7 @@ where
     // the rounding interval.
     let cmp = scaled_sig.wrapping_sub((dec_sig_below + dec_sig_above) << 1) as i64;
     let below_closer = cmp < 0 || (cmp == 0 && (dec_sig_below & 1) == 0);
-    let below_in = (dec_sig_below << BOUND_SHIFT) >= lower;
+    let below_in = (dec_sig_below << BOUND_SHIFT) >= lower.into();
     fp {
         sig: if below_closer & below_in {
             dec_sig_below

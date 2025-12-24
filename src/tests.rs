@@ -23,14 +23,14 @@ fn utilities() {
 }
 
 #[test]
-fn umul192_upper64_inexact_to_odd() {
+fn umul_upper_inexact_to_odd() {
     let (hi, lo) = crate::POW10_SIGNIFICANDS[0];
     assert_eq!(
-        crate::umul192_upper64_inexact_to_odd(hi, lo, 0x1234567890abcdef << 1),
+        crate::umul_upper_inexact_to_odd(hi, lo, 0x1234567890abcdefu64 << 1),
         0x24554a3ce60a45f5,
     );
     assert_eq!(
-        crate::umul192_upper64_inexact_to_odd(hi, lo, 0x1234567890abce16 << 1),
+        crate::umul_upper_inexact_to_odd(hi, lo, 0x1234567890abce16u64 << 1),
         0x24554a3ce60a4643,
     );
 }

@@ -46,7 +46,24 @@ pub trait UInt:
     + Into<u64>
     + Display
 {
+    fn truncate(big: u64) -> Self;
+    fn enlarge(small: u32) -> Self;
 }
 
-impl UInt for u32 {}
-impl UInt for u64 {}
+impl UInt for u32 {
+    fn truncate(big: u64) -> Self {
+        big as u32
+    }
+    fn enlarge(small: u32) -> Self {
+        small
+    }
+}
+
+impl UInt for u64 {
+    fn truncate(big: u64) -> Self {
+        big
+    }
+    fn enlarge(small: u32) -> Self {
+        u64::from(small)
+    }
+}
