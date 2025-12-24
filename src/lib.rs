@@ -914,7 +914,7 @@ where
     let exp_shift = bin_exp + pow10_bin_exp + 1;
 
     let num_bits = mem::size_of::<UInt>() as i32 * 8;
-    if regular & !subnormal {
+    if regular && !subnormal {
         let integral;
         let fractional;
         if num_bits == 64 {
