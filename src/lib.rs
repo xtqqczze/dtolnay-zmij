@@ -756,7 +756,7 @@ fn count_trailing_nonzeros(x: u64) -> usize {
 
 // Align data since unaligned access may be slower when crossing a
 // hardware-specific boundary.
-#[repr(align(2))]
+#[repr(C, align(2))]
 struct Digits2([u8; 200]);
 
 static DIGITS2: Digits2 = Digits2(
