@@ -29,6 +29,26 @@ mod dtoa_test {
     }
 
     #[test]
+    fn all_irregular() {
+        for exp in 1..0x3ff {
+            let bits = exp << 52;
+            let value = f64::from_bits(bits);
+
+            assert_eq!(dtoa(value), ryu::Buffer::new().format(value));
+        }
+    }
+
+    #[test]
+    fn all_exponents() {
+        for exp in 0..=0x3ff {
+            let bits = (exp << 52) | 1;
+            let value = f64::from_bits(bits);
+
+            assert_eq!(dtoa(value), ryu::Buffer::new().format(value));
+        }
+    }
+
+    #[test]
     fn small_int() {
         assert_eq!(dtoa(1.0), "1.0");
     }
@@ -67,16 +87,6 @@ mod dtoa_test {
 
         // Only an overestimate is in the rounding region (w in Schubfach).
         assert_eq!(dtoa(6.079537928711555e+61), "6.079537928711555e+61");
-    }
-
-    #[test]
-    fn all_exponents() {
-        for exp in 0..=0x3ff {
-            let bits = (exp << 52) | 1;
-            let value = f64::from_bits(bits);
-
-            assert_eq!(dtoa(value), ryu::Buffer::new().format(value));
-        }
     }
 }
 
