@@ -945,9 +945,10 @@ where
         let upper = rem10 + scaled_half_ulp;
 
         // An optimization from yy by Yaoyuan Guo:
+        let cmp = fractional.wrapping_sub(1 << 63) as i64;
         if {
             // Exact half-ulp tie when rounding to nearest integer.
-            fractional != (1 << 63) &&
+            cmp != 0 &&
             // Exact half-ulp tie when rounding to nearest 10.
             rem10 != scaled_half_ulp &&
             // Near-boundary case for rounding to nearest 10.
@@ -955,7 +956,7 @@ where
         } {
             let round_up = (upper >> num_fractional_bits) >= 10;
             let shorter = integral.into() - digit + u64::from(round_up) * 10;
-            let longer = integral.into() + u64::from(fractional >= (1 << 63));
+            let longer = integral.into() + u64::from(cmp >= 0);
             return fp {
                 sig: if rem10 <= scaled_half_ulp || round_up {
                     shorter
