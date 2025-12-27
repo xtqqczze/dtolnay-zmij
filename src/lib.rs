@@ -28,9 +28,17 @@
 //!
 //! <br>
 //!
-//! ## Performance (lower is better)
+//! ## Performance
 //!
-//! ![performance](https://raw.githubusercontent.com/dtolnay/zmij/master/performance.png)
+//! The [dtoa-benchmark] compares this library and other Rust floating point
+//! formatting implementations across a range of precisions. The vertical axis
+//! in this chart shows nanoseconds taken by a single execution of
+//! `zmij::Buffer::new().format_finite(value)` so a lower result indicates a
+//! faster library.
+//!
+//! [dtoa-benchmark]: https://github.com/dtolnay/dtoa-benchmark
+//!
+//! ![performance](https://raw.githubusercontent.com/dtolnay/zmij/master/dtoa-benchmark.png)
 
 #![no_std]
 #![doc(html_root_url = "https://docs.rs/zmij/0.1.10")]
